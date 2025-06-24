@@ -1,0 +1,53 @@
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>新規登録</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    <section class="section">
+        <div class="container">
+
+            <nav class="level">
+                <div class="level-left">
+                    <h1 class="title">新規登録</h1>
+                </div>
+                <div class="level-right">
+                    <a href="{{ url_for('login') }}" class="button is-info">ログインに戻る</a>
+                </div>
+            </nav>
+
+            {% if error %}
+            <p style="color: red;">入力に誤りがあります。</p>
+            {% endif %}
+            {% if error_unique %}
+            <p style="color: red;">このユーザー名は既に使われています。</p>
+            {% endif %}
+
+            <form method="POST">
+                <div class="field">
+                    <label class="label">ユーザー名</label>
+                    <div class="control">
+                        <input class="input" type="text" name="username" required>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">パスワード</label>
+                    <div class="control">
+                        <input class="input" type="password" name="password" required>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">パスワード確認</label>
+                    <div class="control">
+                        <input class="input" type="password" name="password_confirmation" required>
+                    </div>
+                </div>
+                <button type="submit" class="button is-primary">登録</button>
+            </form>
+            
+        </div>
+    </section>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>授業一覧</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    <section class="section">
+        <div class="container">
+
+            <nav class="level">
+                <div class="level-left">
+                    <h1 class="title">授業一覧</h1>
+                </div>
+                <div class="level-right">
+                    <p>{{ session.get('username') }}さん</p>
+                    <a href="{{ url_for('logout') }}" class="button is-info">ログアウト</a>
+                </div>
+            </nav>
+            
+            <table class="table is-fullwidth is-bordered is-striped has-text-centered">
+                <tr>
+                    <td>授業名</td>
+                    <td>必修</td>
+                    <td></td>
+                    <td>休んだ回数</td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                
+                {% for c in classes %}
+                <tr>
+                    <td class="{% if c.count >= 3 %}color-cell{% endif %}">
+                        {{ c.class_title }}
+                    </td>
+
+                    <td>{{ '○' if c.required else '' }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('decrement', class_id=c.class_id) }}">
+                            <button type="submit" class="button is-info">-</button>
+                        </form>
+                    </td>
+                    <td>{{ c.count }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('increment', class_id=c.class_id) }}">
+                            <button type="submit" class="button is-danger">+</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('delete_class', class_id=c.class_id) }}">
+                            <button type="submit" class="button is-warning is-active">削除</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+
+            <nav class="level">
+                <div class="level-left">
+                    <a href="{{ url_for('create') }}" class="button is-primary">授業追加</a>
+                </div>
+                <div class="level-right">
+                    <form method="POST" action="{{ url_for('delete') }}">
+                        <button type="submit" class="button is-warning">すべて削除</button>
+                    </form>
+                </div>
+            </nav>
+
+        </div>
+    </section>
+
+</body>
+</html>

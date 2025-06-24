@@ -1,0 +1,48 @@
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>授業追加</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    <section class="section">
+        <div class="container">
+
+            <nav class="level">
+                <div class="level-left">
+                    <h1 class="title">授業追加</h1>
+                </div>
+                <div class="level-right">
+                    <p>{{ session.get('username') }}さん</p>
+                    <a href="{{ url_for('logout') }}" class="button is-info">ログアウト</a>
+                </div>
+            </nav>
+            
+            <form action="{{ url_for('create') }}" method="POST">
+                <div class="field">
+                    <label class="label">授業名</label>
+                    <div class="control">
+                        <input class="input" type="text" name="title" required>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="checkbox">
+                        <input type="checkbox" name="check">
+                        必修
+                    </label>
+                </div>
+
+                <nav class="level">
+                    <div class="level-left">
+                        <button type="submit" class="button is-primary">追加</button>
+                    </div>
+                    <div class="level-right">
+                        <a href="{{ url_for('main') }}" class="button is-warning">授業一覧に戻る</a>
+                    </div>
+                </nav>
+
+        </div>
+    </section>
+</body>
+</html>
