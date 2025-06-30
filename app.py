@@ -3,6 +3,8 @@ import base64
 import hashlib
 import secrets
 import sqlite3
+import psycopg2
+import psycopg2.extras
 
 # ハッシュ化アルゴリズム、secret_keyの設定
 HASH_ALGORITHM = "pbkdf2_sha256"
@@ -30,9 +32,14 @@ def verify_password(password, password_hash):
 
 # データベース接続
 def get_db():
-    db = sqlite3.connect('app.db')
-    db.row_factory = sqlite3.Row
-    return db
+    conn = psycopg2.connect(
+        host="localhost",
+        database="todo",
+        user="shinmatsumura",
+        password="password",  # 実際のパスワードに置き換えてください
+        port=5432
+    )
+    return conn
 
 
 # 新規登録
