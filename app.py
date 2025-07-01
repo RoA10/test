@@ -11,6 +11,17 @@ HASH_ALGORITHM = "pbkdf2_sha256"
 app = Flask(__name__)
 app.secret_key = b"opensesame"
 
+def get_db():
+    # PostgreSQLデータベースに接続
+    conn = psycopg2.connect(
+        host="localhost",
+        database="todo",
+        user="shinmatsumura",
+        password="password",  # 実際のパスワードに置き換えてください
+        port=5432
+    )
+    return conn
+
 # ハッシュ化
 def hash_password(password, salt=None, iterations=600000):
     if salt is None:
@@ -32,14 +43,9 @@ def verify_password(password, password_hash):
 
 # データベース接続
 def get_db():
-    conn = psycopg2.connect(
-        host="localhost",
-        database="todo",
-        user="shinmatsumura",
-        password="password",  # 実際のパスワードに置き換えてください
-        port=5432
-    )
-    return conn
+    db = sqlite3.connect('app.db')
+    db.row_factory = sqlite3.Row
+    return db
 
 
 # 新規登録
