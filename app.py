@@ -5,6 +5,15 @@ import secrets
 import sqlite3
 import psycopg2
 import psycopg2.extras
+import os
+
+DATABASE_URL = os.getenv("postgresql://neondb_owner:npg_Yy4xPwt9WavD@ep-lingering-voice-adjdpsfa-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
+
+conn = psycopg2.connect(postgresql://neondb_owner:npg_Yy4xPwt9WavD@ep-lingering-voice-adjdpsfa-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require, sslmode='require')
+cur = conn.cursor()
+cur.execute("SELECT NOW();")
+print(cur.fetchone())
+conn.close()
 
 # ハッシュ化アルゴリズム、secret_keyの設定
 HASH_ALGORITHM = "pbkdf2_sha256"
