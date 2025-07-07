@@ -24,9 +24,9 @@ def get_db():
     # PostgreSQLデータベースに接続
     conn = psycopg2.connect(
         host="localhost",
-        database="todo",
-        user="shinmatsumura",
-        password="password",  # 実際のパスワードに置き換えてください
+        database="app",
+        user="postgres",
+        password="reiu510",  # 実際のパスワードに置き換えてください
         port=5432
     )
     return conn
