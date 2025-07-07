@@ -109,10 +109,18 @@ def main():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    db = get_db()
-    classes = db.execute("SELECT * FROM classes WHERE user_id = ?", (session["user_id"],)).fetchall()
-    db.close()
-    return render_template("main.html", classes=classes)
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM classes WHERE user_id = %s", (session["user_id"],))
+        classes = cur.fetchall()
+        cur.close()
+        conn.close()
+        return render_template("main.html", classes=classes)
+    except Exception as e:
+        print("MAIN ERROR:", e)  # ←ログに出力
+        return "Internal Server Error", 500
+
 
 # 授業追加
 @app.route("/create", methods=["GET", "POST"])
