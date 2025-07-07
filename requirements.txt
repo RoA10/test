@@ -2,7 +2,3 @@ flask==3.0.3
 
 psycopg2-binary
 
-git add requirements.txt
-git commit -m "Add psycopg2 dependency"
-git push
-
