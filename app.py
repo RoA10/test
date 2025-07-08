@@ -7,29 +7,28 @@ import psycopg2
 import psycopg2.extras
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+app = Flask(__name__)
+db_url = os.environ.get("DATABASE_UR")
 
-conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-cur = conn.cursor()
-cur.execute("SELECT NOW();")
-print(cur.fetchone())
-conn.close()
+def get_db():
+    conn = psycopg2.connecet(db_url, sslmode='require')
+    return conn
 
 # ハッシュ化アルゴリズム、secret_keyの設定
 HASH_ALGORITHM = "pbkdf2_sha256"
 app = Flask(__name__)
 app.secret_key = b"opensesame"
 
-def get_db():
-    # PostgreSQLデータベースに接続
-    conn = psycopg2.connect(
-        host="localhost",
-        database="app",
-        user="postgres",
-        password="reiu510",  # 実際のパスワードに置き換えてください
-        port=5432
-    )
-    return conn
+# def get_db():
+#     # PostgreSQLデータベースに接続
+#     conn = psycopg2.connect(
+#         host="localhost",
+#         database="app",
+#         user="postgres",
+#         password="reiu510",  # 実際のパスワードに置き換えてください
+#         port=5432
+#     )
+#     return conn
 
 # ハッシュ化
 def hash_password(password, salt=None, iterations=600000):
@@ -51,10 +50,10 @@ def verify_password(password, password_hash):
     return secrets.compare_digest(password_hash, compare_hash)
 
 # データベース接続
-def get_db():
-    db = sqlite3.connect('app.db')
-    db.row_factory = sqlite3.Row
-    return db
+# def get_db():
+#     db = sqlite3.connect('app.db')
+#     db.row_factory = sqlite3.Row
+#     return db
 
 
 # 新規登録
