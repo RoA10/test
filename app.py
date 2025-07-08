@@ -93,18 +93,21 @@ def logout():
 def main():
     if "user_id" not in session:
         return redirect(url_for("login"))
+    import traceback
     try:
         conn = get_db()
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cur.execute("SELECT * FROM classes WHERE user_id=%s", (session["user_id"],))
         classes = cur.fetchall()
     except Exception as e:
-        app.logger.exception(f"MAIN failed: {type(e).__name__}: {e}")
-        return render_template("error.html", error=e), 500
+        err = traceback.format_exc()
+        app.logger.error("MAIN failed:\n%s", err)
+        return render_template("error.html", error=err), 500
     finally:
         cur.close()
         conn.close()
     return render_template("main.html", classes=classes)
+
 
 
 @app.route("/create", methods=["GET", "POST"])
