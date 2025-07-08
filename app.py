@@ -16,7 +16,7 @@ def get_db():
 
 # ハッシュ化アルゴリズム、secret_keyの設定
 HASH_ALGORITHM = "pbkdf2_sha256"
-
+app = Flask(__name__)
 app.secret_key = b"opensesame"
 
 # def get_db():
@@ -71,10 +71,10 @@ def register():
 
     db = get_db()
     with db:
-        if db.execute("SELECT * FROM users WHERE username = %s", (username,)).fetchone():
+        if db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone():
             return render_template("register.html", error_unique=True)
         pw_hash = hash_password(password)
-        db.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", (username, pw_hash))
+        db.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, pw_hash))
 
     return redirect(url_for("login"))
 
