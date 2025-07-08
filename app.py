@@ -89,19 +89,21 @@ def logout():
 
 @app.route("/main")
 def main():
-    uid = session.get("user_id")
-    if not uid:
+    if "user_id" not in session:
         return redirect(url_for("login"))
-
     try:
-        with get_db() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute("SELECT * FROM classes WHERE user_id=%s", (uid,))
-                classes = cur.fetchall()
-        return render_template("main.html", classes=classes)
-    except Exception:
-        app.logger.exception("MAIN failed")
-        return "Internal Server Error", 500
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute("SELECT * FROM classes WHERE user_id=%s", (session["user_id"],))
+        classes = cur.fetchall()
+    except Exception as e:
+        app.logger.exception(f"MAIN failed: {type(e).__name__}: {e}")
+        return render_template("error.html", error=e), 500
+    finally:
+        cur.close()
+        conn.close()
+    return render_template("main.html", classes=classes)
+
 
 @app.route("/create", methods=["GET", "POST"])
 def create():
