@@ -59,28 +59,30 @@ def register():
 
 @app.route("/", methods=["GET", "POST"])
 def login():
-    if request.method == "POST":
-        u = request.form.get("username", "").strip()
-        p = request.form.get("password", "")
-        user = None
-        try:
-            with get_db() as conn:
-                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                    cur.execute("SELECT * FROM users WHERE username=%s", (u,))
-                    user = cur.fetchone()
-        except Exception:
-            app.logger.exception("Login failed")
-            return render_template("login.html", error=True)
+    if request.method == "GET":
+        return render_template("login.html")
+    
+    u = request.form.get("username", "").strip()
+    p = request.form.get("password", "")
+    user = None
 
-        if user and verify_password(p, user["password_hash"]):
-            session.permanent = True
-            session["user_id"] = user["id"]
-            session["username"] = user["username"]
-            return redirect(url_for("main"))
+    try:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute("SELECT * FROM users WHERE username = %s", (u,))
+        user = cur.fetchone()
+    except Exception:
+        app.logger.exception("Login failed")
+    finally:
+        cur.close()
+        conn.close()
 
-        return render_template("login.html", error=True)
+    if user and verify_password(p, user["password_hash"]):
+        session["user_id"] = user["id"]
+        session["username"] = user["username"]
+        return redirect(url_for("main"))
 
-    return render_template("login.html")
+    return render_template("login.html", error=True)
 
 @app.route("/logout")
 def logout():
