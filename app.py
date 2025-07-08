@@ -8,10 +8,10 @@ import psycopg2.extras
 import os
 
 app = Flask(__name__)
-db_url = os.environ.get("DATABASE_UR")
+db_url = os.environ.get("DATABASE_URL")
 
 def get_db():
-    conn = psycopg2.connecet(db_url, sslmode='require')
+    conn = psycopg2.connect(db_url, sslmode='require')
     return conn
 
 # ハッシュ化アルゴリズム、secret_keyの設定
