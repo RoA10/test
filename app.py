@@ -8,15 +8,15 @@ import psycopg2.extras
 import os
 
 app = Flask(__name__)
-db_url = os.environ.get("DATABASE_URL")
+app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
 
 def get_db():
-    conn = psycopg2.connect(db_url, sslmode='require')
+    conn = psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
     return conn
 
 # ハッシュ化アルゴリズム、secret_keyの設定
 HASH_ALGORITHM = "pbkdf2_sha256"
-app = Flask(__name__)
+
 app.secret_key = b"opensesame"
 
 # def get_db():
@@ -59,24 +59,37 @@ def verify_password(password, password_hash):
 # 新規登録
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method == "GET":
-        return render_template("register.html")
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        confirm = request.form["password_confirmation"]
 
-    username = request.form.get("username")
-    password = request.form.get("password")
-    confirm = request.form.get("password_confirmation")
+        if not username or password != confirm:
+            return render_template("register.html", error=True)
 
-    if not username or not password or password != confirm:
-        return render_template("register.html", error=True)
+        try:
+            conn = get_db()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+            if cur.fetchone():
+                return render_template("register.html", error_unique=True)
 
-    db = get_db()
-    with db:
-        if db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone():
-            return render_template("register.html", error_unique=True)
-        pw_hash = hash_password(password)
-        db.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, pw_hash))
+            pw_hash = hash_password(password)
+            cur.execute(
+                "INSERT INTO users (username, password_hash) VALUES (%s, %s)",
+                (username, pw_hash)
+            )
+            conn.commit()
+        except Exception as e:
+            app.logger.exception("Register failed")
+            return render_template("register.html", error=True)
+        finally:
+            cur.close()
+            conn.close()
 
-    return redirect(url_for("login"))
+        return redirect(url_for("login"))
+
+    return render_template("register.html")
 
 # ログイン画面
 @app.route("/", methods=["GET", "POST"])
