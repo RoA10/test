@@ -97,11 +97,17 @@ def login():
     if request.method == "GET":
         return render_template("login.html")
 
-    username = request.form.get("username")
-    password = request.form.get("password")
-    db = get_db()
-    user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-    db.close()
+    username = request.form["username"]
+    password = request.form["password"]
+
+    try:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        user = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
 
     if user and verify_password(password, user["password_hash"]):
         session["user_id"] = user["id"]
