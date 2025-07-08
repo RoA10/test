@@ -16,7 +16,6 @@ def get_db():
 
 # ハッシュ化アルゴリズム、secret_keyの設定
 HASH_ALGORITHM = "pbkdf2_sha256"
-
 app.secret_key = b"opensesame"
 
 # def get_db():
@@ -59,37 +58,24 @@ def verify_password(password, password_hash):
 # 新規登録
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        confirm = request.form["password_confirmation"]
+    if request.method == "GET":
+        return render_template("register.html")
 
-        if not username or password != confirm:
-            return render_template("register.html", error=True)
+    username = request.form.get("username")
+    password = request.form.get("password")
+    confirm = request.form.get("password_confirmation")
 
-        try:
-            conn = get_db()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute("SELECT * FROM users WHERE username = %s", (username,))
-            if cur.fetchone():
-                return render_template("register.html", error_unique=True)
+    if not username or not password or password != confirm:
+        return render_template("register.html", error=True)
 
-            pw_hash = hash_password(password)
-            cur.execute(
-                "INSERT INTO users (username, password_hash) VALUES (%s, %s)",
-                (username, pw_hash)
-            )
-            conn.commit()
-        except Exception as e:
-            app.logger.exception("Register failed")
-            return render_template("register.html", error=True)
-        finally:
-            cur.close()
-            conn.close()
+    db = get_db()
+    with db:
+        if db.execute("SELECT * FROM users WHERE username = %s", (username,)).fetchone():
+            return render_template("register.html", error_unique=True)
+        pw_hash = hash_password(password)
+        db.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", (username, pw_hash))
 
-        return redirect(url_for("login"))
-
-    return render_template("register.html")
+    return redirect(url_for("login"))
 
 # ログイン画面
 @app.route("/", methods=["GET", "POST"])
@@ -97,17 +83,11 @@ def login():
     if request.method == "GET":
         return render_template("login.html")
 
-    username = request.form["username"]
-    password = request.form["password"]
-
-    try:
-        conn = get_db()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
-        user = cur.fetchone()
-    finally:
-        cur.close()
-        conn.close()
+    username = request.form.get("username")
+    password = request.form.get("password")
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    db.close()
 
     if user and verify_password(password, user["password_hash"]):
         session["user_id"] = user["id"]
@@ -158,7 +138,7 @@ def create():
     db = get_db()
     with db:
         db.execute(
-            "INSERT INTO classes (class_title, required, count, user_id) VALUES (%s, %s, 1, %s)",
+            "INSERT INTO classes (class_title, required, count, user_id) VALUES (?, ?, 1, ?)",
             (title, required, session["user_id"])
         )
     return redirect(url_for("main"))
