@@ -69,14 +69,25 @@ def register():
     if not username or not password or password != confirm:
         return render_template("register.html", error=True)
 
-    db = get_db()
-    with db:
-        if db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone():
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        if cur.fetchone():
             return render_template("register.html", error_unique=True)
+
         pw_hash = hash_password(password)
-        db.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, pw_hash))
+        cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", (username, pw_hash))
+        conn.commit()
+    except Exception as e:
+        app.logger.exception("Register failed")
+        return render_template("register.html", error=True)
+    finally:
+        cur.close()
+        conn.close()
 
     return redirect(url_for("login"))
+
 
 # ログイン画面
 @app.route("/", methods=["GET", "POST"])
