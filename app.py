@@ -7,19 +7,11 @@ import psycopg2
 import psycopg2.extras
 import os
 
-from flask_login import UserMixin
-
-class User(UserMixin):
-    def __init__(self, id, username, password_hash):
-        self.id = id
-        self.username = username
-        self.password_hash = password_hash
-
 app = Flask(__name__)
 db_url = os.environ.get("DATABASE_URL")
 
 def get_db():
-    conn = psycopg2.connecet(db_url, sslmode='require')
+    conn = psycopg2.connect(db_url, sslmode='require')
     return conn
 
 # ハッシュ化アルゴリズム、secret_keyの設定
@@ -94,15 +86,20 @@ def login():
 
     username = request.form.get("username")
     password = request.form.get("password")
-    db = get_db()
-    user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-    db.close()
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
 
     if user and verify_password(password, user["password_hash"]):
         session["user_id"] = user["id"]
         session["username"] = user["username"]
         return redirect(url_for("main"))
+
     return render_template("login.html", error=True)
+
 
 # ログアウト
 @app.route("/logout")
