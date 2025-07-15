@@ -7,14 +7,6 @@ import psycopg2
 import psycopg2.extras
 import os
 
-from flask_login import UserMixin
-
-class User(UserMixin):
-    def __init__(self, id, username, password_hash):
-        self.id = id
-        self.username = username
-        self.password_hash = password_hash
-
 app = Flask(__name__)
 db_url = os.environ.get("DATABASE_URL")
 
