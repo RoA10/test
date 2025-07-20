@@ -1,5 +1,4 @@
 from flask import Flask, render_template, redirect, url_for, request, session
-import base64
 import hashlib
 import secrets
 import psycopg2
@@ -53,6 +52,8 @@ def login():
         if user and user['password_hash'] == password:
             session['user_id'] = user['id']
             session['username'] = user['username']
+            cur.close()
+            conn.close()
             return redirect(url_for('main'))
         cur.close()
         conn.close()
@@ -81,26 +82,37 @@ def main():
 
 @app.route('/create', methods=['GET', 'POST'])
 def create():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     if request.method == 'POST':
         title = request.form['title']
-        required = 'required' in request.form
+        required = 'check' in request.form  # checkbox名 'check' に合わせて判定
 
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("INSERT INTO classes (class_title, required, absent_count, user_id) VALUES (%s, %s, 0, %s)",
-                    (title, required, session['user_id']))
+        cur.execute(
+            "INSERT INTO classes (class_title, required, absent_count, user_id) VALUES (%s, %s, 0, %s)",
+            (title, required, session['user_id'])
+        )
         conn.commit()
         cur.close()
         conn.close()
         return redirect(url_for('main'))
-    return render_template('create.html')
+
+    return render_template('up.html')
 
 @app.route('/increment/<int:class_id>', methods=['POST'])
 def increment(class_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("UPDATE classes SET absent_count = absent_count + 1 WHERE class_id = %s AND user_id = %s",
-                (class_id, session['user_id']))
+    cur.execute(
+        "UPDATE classes SET absent_count = absent_count + 1 WHERE class_id = %s AND user_id = %s",
+        (class_id, session['user_id'])
+    )
     conn.commit()
     cur.close()
     conn.close()
@@ -108,10 +120,15 @@ def increment(class_id):
 
 @app.route('/decrement/<int:class_id>', methods=['POST'])
 def decrement(class_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("UPDATE classes SET absent_count = GREATEST(absent_count - 1, 0) WHERE class_id = %s AND user_id = %s",
-                (class_id, session['user_id']))
+    cur.execute(
+        "UPDATE classes SET absent_count = GREATEST(absent_count - 1, 0) WHERE class_id = %s AND user_id = %s",
+        (class_id, session['user_id'])
+    )
     conn.commit()
     cur.close()
     conn.close()
@@ -119,6 +136,9 @@ def decrement(class_id):
 
 @app.route('/delete/<int:class_id>', methods=['POST'])
 def delete_class(class_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     conn = get_db()
     cur = conn.cursor()
     cur.execute("DELETE FROM classes WHERE class_id = %s AND user_id = %s", (class_id, session['user_id']))
@@ -129,6 +149,9 @@ def delete_class(class_id):
 
 @app.route('/delete', methods=['POST'])
 def delete():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     conn = get_db()
     cur = conn.cursor()
     cur.execute("DELETE FROM classes WHERE user_id = %s", (session['user_id'],))
@@ -136,3 +159,6 @@ def delete():
     cur.close()
     conn.close()
     return redirect(url_for('main'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
