@@ -28,17 +28,14 @@ def register():
         username = request.form['username']
         password = hash_password(request.form['password'])
 
-        try:
-            conn = get_db()
-            cur = conn.cursor()
-            cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", (username, password))
-            conn.commit()
-            cur.close()
-            conn.close()
-            return redirect(url_for('login'))
-        except Exception as e:
-            app.logger.exception("Register failed")
-            return render_template('register.html', error=True)
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", (username, password))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return redirect(url_for('login'))
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -47,23 +44,20 @@ def login():
         username = request.form['username']
         password = hash_password(request.form['password'])
 
-        try:
-            conn = get_db()
-            cur = conn.cursor()
-            cur.execute("SELECT * FROM users WHERE username = %s", (username,))
-            user = cur.fetchone()
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        user = cur.fetchone()
+
+        if user and user['password_hash'] == password:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
             cur.close()
             conn.close()
-
-            if user and user['password_hash'] == password:
-                session['user_id'] = user['id']
-                session['username'] = user['username']
-                return redirect(url_for('main'))
-            else:
-                return render_template('login.html', error=True)
-        except Exception as e:
-            app.logger.exception("Login failed")
-            return render_template('login.html', error=True)
+            return redirect(url_for('main'))
+        cur.close()
+        conn.close()
+        return render_template('login.html', error=True)
 
     return render_template('login.html')
 
@@ -108,10 +102,11 @@ def create():
             conn.commit()
             cur.close()
             conn.close()
-            return redirect(url_for('main'))
         except Exception as e:
             app.logger.exception("Create class failed")
             return "Internal Server Error", 500
+
+        return redirect(url_for('main'))
 
     return render_template('up.html')
 
@@ -130,10 +125,11 @@ def increment(class_id):
         conn.commit()
         cur.close()
         conn.close()
-        return redirect(url_for('main'))
     except Exception as e:
         app.logger.exception("Increment failed")
         return "Internal Server Error", 500
+
+    return redirect(url_for('main'))
 
 @app.route('/decrement/<int:class_id>', methods=['POST'])
 def decrement(class_id):
@@ -144,16 +140,23 @@ def decrement(class_id):
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            "UPDATE classes SET count = GREATEST(count - 1, 0) WHERE class_id = %s AND user_id = %s",
+            "SELECT count FROM classes WHERE class_id = %s AND user_id = %s",
             (class_id, session['user_id'])
         )
-        conn.commit()
+        current = cur.fetchone()
+        if current and current['count'] > 0:
+            cur.execute(
+                "UPDATE classes SET count = count - 1 WHERE class_id = %s AND user_id = %s",
+                (class_id, session['user_id'])
+            )
+            conn.commit()
         cur.close()
         conn.close()
-        return redirect(url_for('main'))
     except Exception as e:
         app.logger.exception("Decrement failed")
         return "Internal Server Error", 500
+
+    return redirect(url_for('main'))
 
 @app.route('/delete/<int:class_id>', methods=['POST'])
 def delete_class(class_id):
@@ -163,14 +166,18 @@ def delete_class(class_id):
     try:
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("DELETE FROM classes WHERE class_id = %s AND user_id = %s", (class_id, session['user_id']))
+        cur.execute(
+            "DELETE FROM classes WHERE class_id = %s AND user_id = %s",
+            (class_id, session['user_id'])
+        )
         conn.commit()
         cur.close()
         conn.close()
-        return redirect(url_for('main'))
     except Exception as e:
         app.logger.exception("Delete class failed")
         return "Internal Server Error", 500
+
+    return redirect(url_for('main'))
 
 @app.route('/delete', methods=['POST'])
 def delete():
@@ -184,10 +191,8 @@ def delete():
         conn.commit()
         cur.close()
         conn.close()
-        return redirect(url_for('main'))
     except Exception as e:
         app.logger.exception("Delete all failed")
         return "Internal Server Error", 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    return redirect(url_for('main'))
