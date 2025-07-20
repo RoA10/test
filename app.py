@@ -17,8 +17,8 @@ def get_db():
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def verify_password(input_password, stored_hash):
-    return hash_password(input_password) == stored_hash
+def verify_password(password, stored_hash):
+    return hash_password(password) == stored_hash
 
 @app.route('/')
 def index():
@@ -58,9 +58,10 @@ def login():
 
             if user and verify_password(password, user["password_hash"]):
                 session["user_id"] = user["id"]
+                session["username"] = user["username"]
                 return redirect(url_for("main"))
             else:
-                return render_template("login.html", error=True)
+                return render_template("login.html", error="ユーザー名またはパスワードが違います")
 
         except Exception as e:
             app.logger.error("LOGIN ERROR: %s", e)
@@ -82,13 +83,14 @@ def main():
     try:
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM classes WHERE user_id = %s", (session['user_id'],))
+        cur.execute("SELECT * FROM classes WHERE user_id = %s ORDER BY class_id", (session['user_id'],))
         classes = cur.fetchall()
         cur.close()
         conn.close()
         return render_template('main.html', classes=classes)
     except Exception as e:
-        app.logger.exception("MAIN ERROR")
+        app.logger.error("MAIN ERROR: %s", e)
+        app.logger.error(traceback.format_exc())
         return "Internal Server Error", 500
 
 @app.route('/create', methods=['GET', 'POST'])
@@ -111,7 +113,8 @@ def create():
             cur.close()
             conn.close()
         except Exception as e:
-            app.logger.exception("Create class failed")
+            app.logger.error("CREATE ERROR: %s", e)
+            app.logger.error(traceback.format_exc())
             return "Internal Server Error", 500
 
         return redirect(url_for('main'))
@@ -134,7 +137,8 @@ def increment(class_id):
         cur.close()
         conn.close()
     except Exception as e:
-        app.logger.exception("Increment failed")
+        app.logger.error("INCREMENT ERROR: %s", e)
+        app.logger.error(traceback.format_exc())
         return "Internal Server Error", 500
 
     return redirect(url_for('main'))
@@ -161,7 +165,8 @@ def decrement(class_id):
         cur.close()
         conn.close()
     except Exception as e:
-        app.logger.exception("Decrement failed")
+        app.logger.error("DECREMENT ERROR: %s", e)
+        app.logger.error(traceback.format_exc())
         return "Internal Server Error", 500
 
     return redirect(url_for('main'))
@@ -182,13 +187,14 @@ def delete_class(class_id):
         cur.close()
         conn.close()
     except Exception as e:
-        app.logger.exception("Delete class failed")
+        app.logger.error("DELETE ERROR: %s", e)
+        app.logger.error(traceback.format_exc())
         return "Internal Server Error", 500
 
     return redirect(url_for('main'))
 
 @app.route('/delete', methods=['POST'])
-def delete():
+def delete_all():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
@@ -200,7 +206,11 @@ def delete():
         cur.close()
         conn.close()
     except Exception as e:
-        app.logger.exception("Delete all failed")
+        app.logger.error("DELETE ALL ERROR: %s", e)
+        app.logger.error(traceback.format_exc())
         return "Internal Server Error", 500
 
     return redirect(url_for('main'))
+
+if __name__ == "__main__":
+    app.run(debug=True)
