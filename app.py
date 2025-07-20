@@ -60,11 +60,11 @@ def login():
                 session["user_id"] = user["id"]
                 return redirect(url_for("main"))
             else:
-                return "ユーザー名またはパスワードが違います"
+                return render_template("login.html", error=True)
 
         except Exception as e:
-            print("LOGIN ERROR:", str(e))
-            print(traceback.format_exc())
+            app.logger.error("LOGIN ERROR: %s", e)
+            app.logger.error(traceback.format_exc())
             return "Internal Server Error", 500
 
     return render_template("login.html")
