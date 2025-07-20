@@ -242,7 +242,3 @@ def delete_class(class_id):
         return "Internal Server Error", 500
 
     return redirect(url_for("main"))
-
-print("入力されたパスワード:", password)
-print("DBにあるハッシュ:", user["password_hash"])
-print("検証結果:", verify_password(password, user["password_hash"]))
