@@ -35,7 +35,7 @@
 
           {% for c in classes %}
           <tr>
-            <td class="{% if c.absent_count >= 3 %}color-cell{% endif %}">
+            <td class="{% if c.count >= 3 %}color-cell{% endif %}">
               {{ c.class_title }}
             </td>
             <td>{{ '○' if c.required else '' }}</td>
@@ -47,7 +47,7 @@
                 <button type="submit" class="button is-info">-</button>
               </form>
             </td>
-            <td>{{ c.absent_count }}</td>
+            <td>{{ c.count }}</td>
             <td>
               <form
                 method="POST"
