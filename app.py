@@ -1,167 +1,203 @@
 from flask import Flask, render_template, redirect, url_for, request, session
-import base64
 import hashlib
 import secrets
 import psycopg2
 import psycopg2.extras
 import os
+import traceback
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
+
 db_url = os.environ.get("DATABASE_URL")
 
-# パスワード検証関数
-def verify_password(password, stored_hash):
-    hashed_input = base64.b64encode(hashlib.sha256(password.encode()).digest()).decode()
-    return hashed_input == stored_hash
-
-# DB接続
 def get_db():
     return psycopg2.connect(db_url, sslmode='require', cursor_factory=psycopg2.extras.RealDictCursor)
 
-# トップページ → ログイン画面
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
 @app.route('/')
 def index():
-    return render_template('login.html')
+    if 'user_id' in session:
+        return redirect(url_for('main'))
+    return redirect(url_for('login'))
 
-# ログイン処理
-@app.route('/login', methods=['POST'])
-def login():
-    username = request.form['username']
-    password = request.form['password']
-    try:
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = hash_password(request.form['password'])
+
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
-        user = cur.fetchone()
-        if user and verify_password(password, user["password_hash"]):
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            return redirect(url_for('main'))
-        else:
-            return render_template('login.html', error='ログインに失敗しました')
-    except Exception as e:
-        app.logger.error(f"LOGIN ERROR: {e}")
-        return render_template('login.html', error='内部エラーが発生しました')
-    finally:
-        if conn:
+        cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", (username, password))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        try:
+            username = request.form["username"]
+            password = request.form["password"]
+
+            conn = get_db()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+            user = cur.fetchone()
+            cur.close()
             conn.close()
 
-# ログアウト
+            if user and verify_password(password, user["password_hash"]):
+                session["user_id"] = user["id"]
+                return redirect(url_for("main"))
+            else:
+                return "ユーザー名またはパスワードが違います"
+
+        except Exception as e:
+            print("LOGIN ERROR:", str(e))
+            print(traceback.format_exc())
+            return "Internal Server Error", 500
+
+    return render_template("login.html")
+
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
-# 授業一覧表示
 @app.route('/main')
 def main():
     if 'user_id' not in session:
-        return redirect(url_for('index'))
+        return redirect(url_for('login'))
+
     try:
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM classes WHERE user_id = %s ORDER BY class_id", (session['user_id'],))
+        cur.execute("SELECT * FROM classes WHERE user_id = %s", (session['user_id'],))
         classes = cur.fetchall()
+        cur.close()
+        conn.close()
         return render_template('main.html', classes=classes)
     except Exception as e:
-        app.logger.error(f"MAIN ERROR: {e}")
+        app.logger.exception("MAIN ERROR")
         return "Internal Server Error", 500
-    finally:
-        if conn:
-            conn.close()
 
-# 授業追加ページ表示
-@app.route('/create')
+@app.route('/create', methods=['GET', 'POST'])
 def create():
     if 'user_id' not in session:
-        return redirect(url_for('index'))
-    return render_template('create.html')
+        return redirect(url_for('login'))
 
-# 授業追加処理
-@app.route('/create', methods=['POST'])
-def create_post():
-    class_title = request.form['class_title']
-    required = 'required' in request.form
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO classes (class_title, required, count, user_id)
-            VALUES (%s, %s, 0, %s)
-        """, (class_title, required, session['user_id']))
-        conn.commit()
-        return redirect(url_for('main'))
-    except Exception as e:
-        app.logger.error(f"CREATE ERROR: {e}")
-        return "Internal Server Error", 500
-    finally:
-        if conn:
+    if request.method == 'POST':
+        title = request.form['title']
+        required = 'check' in request.form
+
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO classes (class_title, required, count, user_id) VALUES (%s, %s, 0, %s)",
+                (title, required, session['user_id'])
+            )
+            conn.commit()
+            cur.close()
             conn.close()
+        except Exception as e:
+            app.logger.exception("Create class failed")
+            return "Internal Server Error", 500
 
-# 回数を増やす
+        return redirect(url_for('main'))
+
+    return render_template('up.html')
+
 @app.route('/increment/<int:class_id>', methods=['POST'])
 def increment(class_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     try:
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("UPDATE classes SET count = count + 1 WHERE class_id = %s AND user_id = %s",
-                    (class_id, session['user_id']))
+        cur.execute(
+            "UPDATE classes SET count = count + 1 WHERE class_id = %s AND user_id = %s",
+            (class_id, session['user_id'])
+        )
         conn.commit()
-        return redirect(url_for('main'))
+        cur.close()
+        conn.close()
     except Exception as e:
-        app.logger.error(f"INCREMENT ERROR: {e}")
+        app.logger.exception("Increment failed")
         return "Internal Server Error", 500
-    finally:
-        if conn:
-            conn.close()
 
-# 回数を減らす
+    return redirect(url_for('main'))
+
 @app.route('/decrement/<int:class_id>', methods=['POST'])
 def decrement(class_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     try:
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("UPDATE classes SET count = GREATEST(count - 1, 0) WHERE class_id = %s AND user_id = %s",
-                    (class_id, session['user_id']))
-        conn.commit()
-        return redirect(url_for('main'))
+        cur.execute(
+            "SELECT count FROM classes WHERE class_id = %s AND user_id = %s",
+            (class_id, session['user_id'])
+        )
+        current = cur.fetchone()
+        if current and current['count'] > 0:
+            cur.execute(
+                "UPDATE classes SET count = count - 1 WHERE class_id = %s AND user_id = %s",
+                (class_id, session['user_id'])
+            )
+            conn.commit()
+        cur.close()
+        conn.close()
     except Exception as e:
-        app.logger.error(f"DECREMENT ERROR: {e}")
+        app.logger.exception("Decrement failed")
         return "Internal Server Error", 500
-    finally:
-        if conn:
-            conn.close()
 
-# 授業削除
-@app.route('/delete_class/<int:class_id>', methods=['POST'])
+    return redirect(url_for('main'))
+
+@app.route('/delete/<int:class_id>', methods=['POST'])
 def delete_class(class_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     try:
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("DELETE FROM classes WHERE class_id = %s AND user_id = %s", (class_id, session['user_id']))
+        cur.execute(
+            "DELETE FROM classes WHERE class_id = %s AND user_id = %s",
+            (class_id, session['user_id'])
+        )
         conn.commit()
-        return redirect(url_for('main'))
+        cur.close()
+        conn.close()
     except Exception as e:
-        app.logger.error(f"DELETE ERROR: {e}")
+        app.logger.exception("Delete class failed")
         return "Internal Server Error", 500
-    finally:
-        if conn:
-            conn.close()
 
-# すべて削除
+    return redirect(url_for('main'))
+
 @app.route('/delete', methods=['POST'])
 def delete():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     try:
         conn = get_db()
         cur = conn.cursor()
         cur.execute("DELETE FROM classes WHERE user_id = %s", (session['user_id'],))
         conn.commit()
-        return redirect(url_for('main'))
+        cur.close()
+        conn.close()
     except Exception as e:
-        app.logger.error(f"DELETE ALL ERROR: {e}")
+        app.logger.exception("Delete all failed")
         return "Internal Server Error", 500
-    finally:
-        if conn:
-            conn.close()
 
+    return redirect(url_for('main'))
