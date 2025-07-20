@@ -194,7 +194,7 @@ def delete_class(class_id):
     return redirect(url_for('main'))
 
 @app.route('/delete', methods=['POST'])
-def delete_all():
+def delete():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
