@@ -79,22 +79,16 @@ def login():
     password = request.form.get("password")
 
     try:
-        conn = get_db()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
-        user = cur.fetchone()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        app.logger.exception("DB error during login")
-        return render_template("login.html", error=True)
-
     if user and verify_password(password, user["password_hash"]):
         session["user_id"] = user["id"]
         session["username"] = user["username"]
         return redirect(url_for("main"))
     else:
         return render_template("login.html", error=True)
+except Exception as e:
+    app.logger.exception("Password verification failed")
+    return render_template("login.html", error=True)
+
 
 # ログアウト
 @app.route("/logout")
