@@ -4,6 +4,7 @@ import secrets
 import psycopg2
 import psycopg2.extras
 import os
+import traceback
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -38,28 +39,32 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html')
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = hash_password(request.form['password'])
+    if request.method == "POST":
+        try:
+            username = request.form["username"]
+            password = request.form["password"]
 
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
-        user = cur.fetchone()
-
-        if user and user['password_hash'] == password:
-            session['user_id'] = user['id']
-            session['username'] = user['username']
+            conn = get_db()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+            user = cur.fetchone()
             cur.close()
             conn.close()
-            return redirect(url_for('main'))
-        cur.close()
-        conn.close()
-        return render_template('login.html', error=True)
 
-    return render_template('login.html')
+            if user and verify_password(password, user["password_hash"]):
+                session["user_id"] = user["id"]
+                return redirect(url_for("main"))
+            else:
+                return "ユーザー名またはパスワードが違います"
+
+        except Exception as e:
+            print("LOGIN ERROR:", str(e))
+            print(traceback.format_exc())
+            return "Internal Server Error", 500
+
+    return render_template("login.html")
 
 @app.route('/logout')
 def logout():
