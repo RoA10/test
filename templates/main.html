@@ -12,6 +12,20 @@
         <nav class="level">
           <div class="level-left">
             <h1 class="title">授業一覧</h1>
+            <form
+              method="POST"
+              action="{{ url_for('set_max_absence') }}"
+              style="margin-left: 2rem"
+            >
+              <label>休んでいい回数:</label>
+              <input
+                type="number"
+                name="max_absence"
+                min="1"
+                value="{{ max_absence }}"
+              />
+              <button type="submit" class="button is-link">変更</button>
+            </form>
           </div>
           <div class="level-right">
             <p>{{ session.get('username') }}さん</p>
@@ -35,7 +49,7 @@
 
           {% for c in classes %}
           <tr>
-            <td class="{% if c.count >= 3 %}color-cell{% endif %}">
+            <td class="{% if c.count >= max_absence %}color-cell{% endif %}">
               {{ c.class_title }}
             </td>
             <td>{{ '○' if c.required else '' }}</td>
