@@ -212,19 +212,5 @@ def delete():
 
     return redirect(url_for('main'))
 
-from flask import session
-
-@app.route('/set_max_absence', methods=['POST'])
-def set_max_absence():
-    max_absence = int(request.form.get('max_absence', 3))
-    session['max_absence'] = max_absence
-    return redirect(url_for('main'))
-
-@app.route('/')
-def main():
-    # ...既存の処理...
-    max_absence = session.get('max_absence', 3)
-    return render_template('main.html', classes=classes, max_absence=max_absence)
-
 if __name__ == "__main__":
     app.run(debug=True)
